@@ -1,0 +1,7 @@
+{
+    "ip": "192.168.88.5",
+    "home_position": [-90, -90, -90, 0, 90, 0],
+    "speed": 0.5,
+    "acceleration": 0.5,
+    "pickle_path": "./pickles/trjs_bridge.pickle"
+}

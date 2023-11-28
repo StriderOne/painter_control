@@ -1,0 +1,15 @@
+version: '3.9'
+name: 'painter'
+
+
+services:
+  control:
+    image: painter
+    container_name: painter_control
+    # command: ["/bin/bash", "-ci"]
+    stdin_open: true 
+    tty: true  
+    volumes:
+      - .:/workspace/painter_reborn
+# volumes:
+  # .:
