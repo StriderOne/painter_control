@@ -12,7 +12,7 @@ import UDriver as URDriver
 
 class PainterControl():
 
-    def __init__(self, ip, home_position, speed, acceleration, verbose = False):
+    def __init__(self, ip, home_position, speed, acceleration, canfas_tf, verbose = False):
         self.__ip = ip
         self.__robot = URDriver.UniversalRobot(self.__ip)
         self.__robot_model = URDriver.robot.RobotModel('urdf_model/ur5e_right.urdf','world', 'tool0')
@@ -20,32 +20,25 @@ class PainterControl():
         self.home_position = np.array(home_position) * np.pi / 180
         self.__speed = speed
         self.__acceleration = acceleration
+        self.canvas_tf = canfas_tf
 
         if self.verbose:
             print(f"Create PainterControl with ip: {self.__ip}; home_position: {self.home_position}")
-
-        rotation_matrix = Rotation.from_rotvec(np.array([1.988, 0.102, -0.053])).as_matrix()
-        rotation_pi = Rotation.from_euler('y', -180, degrees=True).as_matrix()
-        rotation_matrix = rotation_matrix @ rotation_pi
-        self.canvas_tf = np.array([
-            [rotation_matrix[0][0], rotation_matrix[0][1],  rotation_matrix[0][2], 0.14644],
-            [rotation_matrix[1][0], rotation_matrix[1][1],  rotation_matrix[1][2], -0.52441],
-            [rotation_matrix[2][0], rotation_matrix[2][1],  rotation_matrix[2][2], 0.42132],
-            [0.0,        0.0,        0.0,      1.0]
-        ])
+            print(f"Canvas transformation: {self.canvas_tf}")
 
         self.pose_above_canvas = self.calculate_pose_above_canvas(self.canvas_tf)
         
 
-    def calculate_pose_above_canvas(self, canvas_tf, height=0.3):
-        # only if canvas is horizontal
+    def calculate_pose_above_canvas(self, canvas_tf, height_padding=0.0):
         rotation_pi = Rotation.from_euler('y', 180, degrees=True).as_matrix()
         rotvec = Rotation.from_matrix(canvas_tf[:3, :3] @ rotation_pi).as_rotvec()
-        print(rotvec)
         linear_pose = canvas_tf[:3, 3].copy()
-        print(linear_pose)
-        # linear_pose[2] += height
+        linear_pose[2] += height_padding
         pose = np.concatenate((linear_pose, rotvec))
+
+        if self.verbose:
+            print(f"Pose above canvas: {pose}")
+
         return pose
 
     def go_home(self):
@@ -61,20 +54,20 @@ class PainterControl():
         self.__robot.control.moveL(self.pose_above_canvas, self.__speed, self.__acceleration)
 
     def reset_ft_sensor(self):
+        if self.verbose:
+            print("Reseting force sensor")
         time.sleep(1)
         self.__robot.control.zeroFtSensor()
         time.sleep(1)
 
     def get_force_in_tool_frame(self):
         self.__robot.update_state()
-        force = np.array(self.__robot.state.f).flatten()[:3]
-        force_in_tool_frame = np.linalg.pinv(self.__robot_model.rot(self.__robot.state.q)) @ force
-        # print("ROT MATRIX: ", self.__robot_model.rot(self.__robot.state.q))
-        # print("FORCE: ", force_in_tool_frame)
-
-        return force_in_tool_frame
+        force_at_world_frame = np.array(self.__robot.state.f).flatten()[:3]
+        force_at_tool_frame = np.linalg.pinv(self.__robot_model.rot(self.__robot.state.q)) @ force_at_world_frame
         
-    def move_until_contact(self, z_force):
+        return force_at_tool_frame
+        
+    def move_until_contact(self, target_z_force):
         # Coefficients
         max_speed = 0.07
         
@@ -93,7 +86,7 @@ class PainterControl():
             force = self.get_force_in_tool_frame()
             print(force)
             # error
-            goal = z_force
+            goal = target_z_force
             err_f = goal - force[2]
             derr_f = (err_f - last_err)/delta_t
             last_err = err_f
@@ -123,7 +116,8 @@ class PainterControl():
             if duration < dt:
                 time.sleep(dt - duration)
 
-    def draw_canvas_axis(self, is_x):
+    def draw_canvas_axis(self, axes:str):
+        
         painter_control.reset_ft_sensor()
         self.__robot.update_state()
         current_pose = self.__robot.receive.getActualTCPPose()

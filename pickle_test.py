@@ -16,10 +16,9 @@ with open(filename, 'rb') as file:
     data = pickle.load(file)
 
     trajectories = data['trajectories']
-
    
 
-    for i, trajectory in enumerate(trajectories[1:2]):
+    for i, trajectory in enumerate(trajectories):
         points = trajectory["points"]
         print(trajectory)
         plt.scatter(points[:, 0], points[:, 1])

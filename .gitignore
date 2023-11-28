@@ -8,6 +8,7 @@ __pycache__/
 
 # vscode
 .vscode
+test.py
 
 # Distribution / packaging
 .Python
