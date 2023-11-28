@@ -279,7 +279,7 @@ class PainterControl():
         self.__robot.control.moveL(pose, self.__speed, self.__acceleration, False)
 
 
-    def drawing(self, pickle_file):
+    def drawing(self, pickle_file, one_color=False):
         self.reset_ft_sensor()
         if self.verbose:
             print("Load pickle...")
@@ -292,29 +292,29 @@ class PainterControl():
 
         for i, trajectory in enumerate(trajectories):
             
-            # trajectory_color = trajectory['color']
-            # self.__robot.control.zeroFtSensor()
+            trajectory_color = trajectory['color']
+            self.__robot.control.zeroFtSensor()
             
-            # if (trajectory_color <= 0):
-            #     continue
+            if (not one_color and trajectory_color <= 0):
+                continue
             
             trajectory_points = trajectory['points']
             
-            # # change color
-            # if (abs(color_num - trajectory_color) > 0):
+            # change color
+            if (abs(color_num - trajectory_color) > 0):
                 
-            #     self.go_above_canvas()
+                self.go_above_canvas()
                 
-            #     self.go_home()
-            #     if self.verbose:
-            #         print(f"Finish splines with color {color_num}, preparing for next color...")
-            #     input('Press enter to continue:')
-            #     color_num = trajectory_color
+                self.go_home()
+                if self.verbose:
+                    print(f"Finish splines with color {color_num}, preparing for next color...")
+                input('Press enter to continue:')
+                color_num = trajectory_color
 
-            #     self.go_above_canvas()
+                self.go_above_canvas()
 
-            # if self.verbose:
-            #     print('[i / truajectories]: {}/{}'.format(i, trajectories_count))
+            if self.verbose:
+                print('[i / truajectories]: {}/{}'.format(i, trajectories_count))
             
             self.make_spline(trajectory_points)
 
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     filename = directory + 'trjs_bridge.pickle'
     # STAGE = 0
     with open(filename, 'rb') as file:
-        painter_control.drawing(file)
+        painter_control.drawing(file, one_color=True)
     # painter_control.draw_canvas_axis(is_x = True)
     # painter_control.go_above_canvas()
     # painter_control.draw_canvas_axis(is_x = False)
